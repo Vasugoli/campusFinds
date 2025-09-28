@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-all server.ts",
+    "test": "deno test"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom"]
+  }
+}
