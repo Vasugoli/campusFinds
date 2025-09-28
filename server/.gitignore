@@ -1,0 +1,53 @@
+# Deno cache directories (do not commit cached modules)
+deno_dir/
+**/deno_dir/
+.deno/
+.deno.testServer/
+
+# Lock file SHOULD be committed:
+# !deno.lock
+
+# Build / output
+dist/
+build/
+out/
+coverage/
+*.lcov
+*.cov
+
+node_modules
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Env files
+.env
+.env.*
+
+# Node interop (if any)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+*.bak
+*.orig
