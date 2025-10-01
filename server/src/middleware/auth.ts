@@ -1,37 +1,55 @@
-import { Context, Next } from "https://deno.land/x/hono@v3.12.9/mod.ts";
-import { verify } from "https://deno.land/x/djwt@v2.2/mod.ts";
+import { Context, Next } from "hono";
+import { verify } from "djwt";
 import { User } from "../models/User.ts";
 
+// Helper function to create JWT key
+async function getJWTKey(): Promise<CryptoKey> {
+	const secret = Deno.env.get("JWT_SECRET") || "your-secret-key";
+	const encoder = new TextEncoder();
+	const keyData = encoder.encode(secret);
+	return await crypto.subtle.importKey(
+		"raw",
+		keyData,
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign", "verify"]
+	);
+}
+
 export const auth = async (c: Context, next: Next) => {
-  const authHeader = c.req.header("Authorization");
+	const authHeader = c.req.header("Authorization");
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return c.json({ message: "Unauthorized" }, 401);
-  }
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return c.json({ message: "Unauthorized" }, 401);
+	}
 
-  const token = authHeader.split(" ")[1];
+	const token = authHeader.split(" ")[1];
 
-  try {
-    const payload = await verify(token, Deno.env.get("JWT_SECRET")!, "HS256");
-    const user = await User.findById(payload.id as string).select("-password");
+	try {
+		const key = await getJWTKey();
+		const payload = await verify(token, key);
+		const user = await User.findById(payload.id as string).select(
+			"-password"
+		);
 
-    if (!user) {
-      return c.json({ message: "Unauthorized" }, 401);
-    }
+		if (!user) {
+			return c.json({ message: "Unauthorized" }, 401);
+		}
 
-    c.set("user", user);
-    await next();
-  } catch (error) {
-    return c.json({ message: "Unauthorized", error: error.message }, 401);
-  }
+		c.set("user", user);
+		await next();
+	} catch (error) {
+		console.error("Auth error:", error);
+		return c.json({ message: "Unauthorized" }, 401);
+	}
 };
 
 export const admin = async (c: Context, next: Next) => {
-  const user = c.get("user");
+	const user = c.get("user");
 
-  if (user.role !== "admin") {
-    return c.json({ message: "Forbidden" }, 403);
-  }
+	if (!user || user.role !== "admin") {
+		return c.json({ message: "Forbidden" }, 403);
+	}
 
-  await next();
+	await next();
 };

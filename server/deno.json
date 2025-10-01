@@ -1,9 +1,25 @@
 {
-  "tasks": {
-    "dev": "deno run --allow-all server.ts",
-    "test": "deno test"
+  "imports": {
+    "hono": "https://deno.land/x/hono@v3.12.9/mod.ts",
+    "hono/middleware": "https://deno.land/x/hono@v3.12.9/middleware.ts",
+    "mongoose": "npm:mongoose@^8.0.0",
+    "bcrypt": "https://deno.land/x/bcrypt@v0.4.1/mod.ts",
+    "djwt": "https://deno.land/x/djwt@v2.9.1/mod.ts",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts",
+    "nodemailer": "npm:nodemailer@^6.9.0",
+    "cloudinary": "npm:cloudinary@^1.41.0",
+    "std/": "https://deno.land/std@0.208.0/"
   },
+  "tasks": {
+    "dev": "deno run --allow-all --watch ./src/index.ts",
+    "start": "deno run --allow-all src/index.ts",
+    "test": "deno test --allow-all",
+    "seed": "deno run --allow-all scripts/seed.ts"
+  },
+  "nodeModulesDir": "auto",
   "compilerOptions": {
-    "lib": ["deno.ns", "dom"]
+    "lib": ["deno.ns", "dom"],
+    "strict": true,
+    "noImplicitAny": false
   }
 }
