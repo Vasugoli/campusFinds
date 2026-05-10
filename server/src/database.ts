@@ -2,7 +2,7 @@ import { connect } from "mongoose";
 
 let isConnected = false;
 
-export async function connectDB(): Promise<void> {
+export async function connectDB(mongoUri?: string): Promise<void> {
 	if (isConnected) {
 		console.log("📊 Already connected to MongoDB");
 		return;
@@ -10,7 +10,8 @@ export async function connectDB(): Promise<void> {
 
 	try {
 		const MONGODB_URI =
-			Deno.env.get("MONGODB_URI") ||
+			mongoUri ||
+			process.env.MONGODB_URI ||
 			"mongodb://localhost:27017/campusfinds";
 
 		await connect(MONGODB_URI);
@@ -19,7 +20,7 @@ export async function connectDB(): Promise<void> {
 		console.log("📊 Connected to MongoDB successfully");
 	} catch (error) {
 		console.error("❌ MongoDB connection error:", error);
-		Deno.exit(1);
+		process.exit(1);
 	}
 }
 

@@ -1,9 +1,9 @@
-import { Context } from "hono";
-import { Claim } from "../models/Claim.ts";
-import { Item } from "../models/Item.ts";
-import { ActivityLogger } from "../utils/activityLogger.ts";
-import { NotificationService } from "../utils/notificationService.ts";
-import { EmailService } from "../utils/emailService.ts";
+import { Request, Response } from "express";
+import { Claim } from "@/models/Claim.ts";
+import { Item } from "@/models/Item.ts";
+import { ActivityLogger } from "@/utils/activityLogger.ts";
+import { NotificationService } from "@/utils/notificationService.ts";
+import { EmailService } from "@/utils/emailService.ts";
 
 // Validation helper
 function validateClaimData(data: Record<string, unknown>) {
@@ -49,14 +49,14 @@ function validateClaimResponse(data: Record<string, unknown>) {
 }
 
 // Create a claim
-export async function createClaim(c: Context) {
+export const createClaim = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user");
-		const body = await c.req.json();
+		const user = req.user;
+		const body = req.body;
 
 		const errors = validateClaimData(body);
 		if (errors.length > 0) {
-			return c.json({ message: "Validation failed", errors }, 400);
+			return res.status(400).json({ message: "Validation failed", errors });
 		}
 
 		const { itemId, message } = body;
@@ -67,18 +67,17 @@ export async function createClaim(c: Context) {
 			"displayName email"
 		);
 		if (!item) {
-			return c.json({ message: "Item not found" }, 404);
+			return res.status(404).json({ message: "Item not found" });
 		}
 
 		if (item.status === "returned") {
-			return c.json(
-				{ message: "This item has already been returned" },
-				400
+			return res.status(400).json(
+				{ message: "This item has already been returned" }
 			);
 		}
 
-		if (item.reporterId._id.toString() === user._id.toString()) {
-			return c.json({ message: "You cannot claim your own item" }, 400);
+		if ((item.reporterId as any)._id.toString() === user._id.toString()) {
+			return res.status(400).json({ message: "You cannot claim your own item" });
 		}
 
 		// Check if user has already claimed this item
@@ -89,9 +88,8 @@ export async function createClaim(c: Context) {
 		});
 
 		if (existingClaim) {
-			return c.json(
-				{ message: "You have already claimed this item" },
-				400
+			return res.status(400).json(
+				{ message: "You have already claimed this item" }
 			);
 		}
 
@@ -99,7 +97,7 @@ export async function createClaim(c: Context) {
 		const claim = new Claim({
 			itemId,
 			claimantId: user._id,
-			reporterId: item.reporterId._id,
+			reporterId: (item.reporterId as any)._id,
 			message,
 		});
 
@@ -120,7 +118,7 @@ export async function createClaim(c: Context) {
 
 		// Send notifications
 		await NotificationService.notifyClaimReceived(
-			item.reporterId._id.toString(),
+			(item.reporterId as any)._id.toString(),
 			item.title,
 			user.displayName,
 			itemId,
@@ -128,27 +126,27 @@ export async function createClaim(c: Context) {
 		);
 
 		// Send email notification
-		await EmailService.sendClaimNotification(item.reporterId.email, {
-			reporterName: item.reporterId.displayName,
+		await EmailService.sendClaimNotification((item.reporterId as any).email, {
+			reporterName: (item.reporterId as any).displayName,
 			claimantName: user.displayName,
 			itemTitle: item.title,
 			itemId,
 			claimMessage: message,
 		});
 
-		return c.json(claim, 201);
+		res.status(201).json(claim);
 	} catch (error) {
 		console.error("Create claim error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Get user's claims (as claimant)
-export async function getMyClaims(c: Context) {
+export const getMyClaims = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user");
-		const page = parseInt(c.req.query("page") || "1");
-		const limit = parseInt(c.req.query("limit") || "10");
+		const user = req.user;
+		const page = parseInt((req.query.page as string) || "1");
+		const limit = parseInt((req.query.limit as string) || "10");
 		const skip = (page - 1) * limit;
 
 		const claims = await Claim.find({ claimantId: user._id })
@@ -160,7 +158,7 @@ export async function getMyClaims(c: Context) {
 
 		const total = await Claim.countDocuments({ claimantId: user._id });
 
-		return c.json({
+		res.json({
 			claims,
 			pagination: {
 				page,
@@ -171,16 +169,16 @@ export async function getMyClaims(c: Context) {
 		});
 	} catch (error) {
 		console.error("Get my claims error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Get claims for user's items (as reporter)
-export async function getReceivedClaims(c: Context) {
+export const getReceivedClaims = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user");
-		const page = parseInt(c.req.query("page") || "1");
-		const limit = parseInt(c.req.query("limit") || "10");
+		const user = req.user;
+		const page = parseInt((req.query.page as string) || "1");
+		const limit = parseInt((req.query.limit as string) || "10");
 		const skip = (page - 1) * limit;
 
 		const claims = await Claim.find({ reporterId: user._id })
@@ -192,7 +190,7 @@ export async function getReceivedClaims(c: Context) {
 
 		const total = await Claim.countDocuments({ reporterId: user._id });
 
-		return c.json({
+		res.json({
 			claims,
 			pagination: {
 				page,
@@ -203,20 +201,20 @@ export async function getReceivedClaims(c: Context) {
 		});
 	} catch (error) {
 		console.error("Get received claims error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Respond to a claim
-export async function respondToClaim(c: Context) {
+export const respondToClaim = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user");
-		const claimId = c.req.param("id");
-		const body = await c.req.json();
+		const user = req.user;
+		const claimId = req.params.id;
+		const body = req.body;
 
 		const errors = validateClaimResponse(body);
 		if (errors.length > 0) {
-			return c.json({ message: "Validation failed", errors }, 400);
+			return res.status(400).json({ message: "Validation failed", errors });
 		}
 
 		const { status, responseMessage } = body;
@@ -227,38 +225,36 @@ export async function respondToClaim(c: Context) {
 			.populate("reporterId", "displayName");
 
 		if (!claim) {
-			return c.json({ message: "Claim not found" }, 404);
+			return res.status(404).json({ message: "Claim not found" });
 		}
 
-		if (claim.reporterId._id.toString() !== user._id.toString()) {
-			return c.json(
-				{ message: "You can only respond to claims for your items" },
-				403
+		if ((claim.reporterId as any)._id.toString() !== user._id.toString()) {
+			return res.status(403).json(
+				{ message: "You can only respond to claims for your items" }
 			);
 		}
 
 		if (claim.status !== "pending") {
-			return c.json(
-				{ message: "This claim has already been responded to" },
-				400
+			return res.status(400).json(
+				{ message: "This claim has already been responded to" }
 			);
 		}
 
 		// Update claim
-		claim.status = status;
+		claim.status = status as any;
 		claim.responseMessage = responseMessage;
 		claim.respondedAt = new Date();
 		await claim.save();
 
 		// Update item status if approved or returned
 		if (status === "approved") {
-			await Item.findByIdAndUpdate(claim.itemId._id, {
-				claimedBy: claim.claimantId._id,
+			await Item.findByIdAndUpdate((claim.itemId as any)._id, {
+				claimedBy: (claim.claimantId as any)._id,
 			});
 		} else if (status === "returned") {
-			await Item.findByIdAndUpdate(claim.itemId._id, {
+			await Item.findByIdAndUpdate((claim.itemId as any)._id, {
 				status: "returned",
-				claimedBy: claim.claimantId._id,
+				claimedBy: (claim.claimantId as any)._id,
 			});
 		}
 
@@ -268,49 +264,49 @@ export async function respondToClaim(c: Context) {
 			action: status === "approved" ? "claim_approved" : "claim_denied",
 			target: "claim",
 			targetId: claimId,
-			metadata: { itemId: claim.itemId._id.toString(), status },
+			metadata: { itemId: (claim.itemId as any)._id.toString(), status },
 		});
 
 		// Send notifications
 		await NotificationService.notifyClaimResponse(
-			claim.claimantId._id.toString(),
-			claim.itemId.title,
+			(claim.claimantId as any)._id.toString(),
+			(claim.itemId as any).title,
 			status === "approved" || status === "returned",
-			claim.itemId._id.toString(),
+			(claim.itemId as any)._id.toString(),
 			claimId
 		);
 
 		// Send email notification
 		await EmailService.sendClaimResponse(
-			claim.claimantId.email,
+			(claim.claimantId as any).email,
 			status === "approved" || status === "returned",
 			{
-				claimantName: claim.claimantId.displayName,
-				itemTitle: claim.itemId.title,
+				claimantName: (claim.claimantId as any).displayName,
+				itemTitle: (claim.itemId as any).title,
 				responseMessage,
 			}
 		);
 
 		// If returned, send return notification
 		if (status === "returned") {
-			await EmailService.sendReturnNotification(claim.claimantId.email, {
-				claimantName: claim.claimantId.displayName,
-				itemTitle: claim.itemId.title,
+			await EmailService.sendReturnNotification((claim.claimantId as any).email, {
+				claimantName: (claim.claimantId as any).displayName,
+				itemTitle: (claim.itemId as any).title,
 			});
 		}
 
-		return c.json(claim);
+		res.json(claim);
 	} catch (error) {
 		console.error("Respond to claim error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Get a specific claim
-export async function getClaim(c: Context) {
+export const getClaim = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user");
-		const claimId = c.req.param("id");
+		const user = req.user;
+		const claimId = req.params.id;
 
 		const claim = await Claim.findById(claimId)
 			.populate("itemId", "title description images category location")
@@ -318,21 +314,21 @@ export async function getClaim(c: Context) {
 			.populate("reporterId", "displayName avatarUrl");
 
 		if (!claim) {
-			return c.json({ message: "Claim not found" }, 404);
+			return res.status(404).json({ message: "Claim not found" });
 		}
 
 		// Check if user is involved in this claim or is admin
 		if (
-			claim.claimantId._id.toString() !== user._id.toString() &&
-			claim.reporterId._id.toString() !== user._id.toString() &&
+			(claim.claimantId as any)._id.toString() !== user._id.toString() &&
+			(claim.reporterId as any)._id.toString() !== user._id.toString() &&
 			user.role !== "admin"
 		) {
-			return c.json({ message: "Access denied" }, 403);
+			return res.status(403).json({ message: "Access denied" });
 		}
 
-		return c.json(claim);
+		res.json(claim);
 	} catch (error) {
 		console.error("Get claim error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};

@@ -1,4 +1,4 @@
-import { ActivityLog } from "../models/ActivityLog.ts";
+import { ActivityLog } from "@/models/ActivityLog.ts";
 
 interface LogActivityData {
 	actor: string;

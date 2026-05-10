@@ -1,8 +1,8 @@
-import { Hono } from "hono";
-import { auth } from "../middleware/auth.ts";
+import { Router } from "express";
+import { auth } from "@/middleware/auth.ts";
 import { createReport, getReports, reviewReport, getReport } from "../controllers/reports_controllers.ts";
 
-const reportRoutes = new Hono();
+const reportRoutes = Router();
 
 // Create a report
 reportRoutes.post("/", auth, createReport);

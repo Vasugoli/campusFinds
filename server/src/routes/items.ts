@@ -1,8 +1,8 @@
-import { Hono } from "hono";
-import { auth } from "../middleware/auth.ts";
-import { getAllItems, getItem, createItem, updateItem, deleteItem } from "../controllers/items_controllers.ts";
+import { Router } from "express";
+import { auth } from "@/middleware/auth.ts";
+import { getAllItems, getItem, createItem, updateItem, deleteItem } from "@/controllers/items_controllers.ts";
 
-const itemRoutes = new Hono();
+const itemRoutes = Router();
 
 // Get all items (public)
 itemRoutes.get("/", getAllItems);

@@ -11,12 +11,19 @@ interface EmailTemplate {
 	text: string;
 }
 
+export interface SendEmailJobData {
+	to: string | string[];
+	subject: string;
+	text?: string;
+	html?: string;
+}
+
 export class EmailService {
-	private static apiKey = Deno.env.get("SENDGRID_API_KEY");
+	private static apiKey = process.env.SENDGRID_API_KEY;
 	private static fromEmail =
-		Deno.env.get("FROM_EMAIL") || "noreply@campusfinds.com";
+		process.env.FROM_EMAIL || "noreply@campusfinds.com";
 	private static clientUrl =
-		Deno.env.get("CLIENT_URL") || "http://localhost:5173";
+		process.env.CLIENT_URL || "http://localhost:5173";
 
 	static async sendEmail(config: EmailConfig): Promise<boolean> {
 		if (!this.apiKey) {
@@ -58,7 +65,7 @@ export class EmailService {
 			return response.ok;
 		} catch (error) {
 			console.error("Failed to send email:", error);
-			return false;
+			throw error; // Re-throw for job queue retry
 		}
 	}
 

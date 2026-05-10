@@ -1,12 +1,12 @@
-import { Context } from "hono";
-import { NotificationService } from "../utils/notificationService.ts";
+import { Request, Response } from "express";
+import { NotificationService } from "@/utils/notificationService.ts";
 
 // Get user notifications
-export async function getUserNotifications(c: Context) {
+export const getUserNotifications = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as { _id: string };
-		const page = parseInt(c.req.query("page") || "1");
-		const limit = parseInt(c.req.query("limit") || "20");
+		const user = req.user as { _id: string };
+		const page = parseInt((req.query.page as string) || "1");
+		const limit = parseInt((req.query.limit as string) || "20");
 
 		const result = await NotificationService.getUserNotifications(
 			user._id,
@@ -14,18 +14,18 @@ export async function getUserNotifications(c: Context) {
 			limit
 		);
 
-		return c.json(result);
+		res.json(result);
 	} catch (error) {
 		console.error("Get notifications error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Mark notification as read
-export async function markAsRead(c: Context) {
+export const markAsRead = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as { _id: string };
-		const notificationId = c.req.param("id");
+		const user = req.user as { _id: string };
+		const notificationId = req.params.id;
 
 		const success = await NotificationService.markAsRead(
 			notificationId,
@@ -33,35 +33,35 @@ export async function markAsRead(c: Context) {
 		);
 
 		if (!success) {
-			return c.json({ message: "Notification not found" }, 404);
+			return res.status(404).json({ message: "Notification not found" });
 		}
 
-		return c.json({ message: "Notification marked as read" });
+		res.json({ message: "Notification marked as read" });
 	} catch (error) {
 		console.error("Mark notification as read error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Mark all notifications as read
-export async function markAllAsRead(c: Context) {
+export const markAllAsRead = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as { _id: string };
+		const user = req.user as { _id: string };
 
 		await NotificationService.markAllAsRead(user._id);
 
-		return c.json({ message: "All notifications marked as read" });
+		res.json({ message: "All notifications marked as read" });
 	} catch (error) {
 		console.error("Mark all notifications as read error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Delete notification
-export async function deleteNotification(c: Context) {
+export const deleteNotification = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as { _id: string };
-		const notificationId = c.req.param("id");
+		const user = req.user as { _id: string };
+		const notificationId = req.params.id;
 
 		const success = await NotificationService.deleteNotification(
 			notificationId,
@@ -69,12 +69,12 @@ export async function deleteNotification(c: Context) {
 		);
 
 		if (!success) {
-			return c.json({ message: "Notification not found" }, 404);
+			return res.status(404).json({ message: "Notification not found" });
 		}
 
-		return c.json({ message: "Notification deleted" });
+		res.json({ message: "Notification deleted" });
 	} catch (error) {
 		console.error("Delete notification error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};

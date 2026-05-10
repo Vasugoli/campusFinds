@@ -1,5 +1,5 @@
-import { Notification } from "../models/Notification.ts";
-import { EmailService } from "./emailService.ts";
+import { Notification } from "@/models/Notification.ts";
+import { EmailService } from "@/utils/emailService";
 
 interface CreateNotificationData {
 	userId: string;

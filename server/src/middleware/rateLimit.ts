@@ -1,4 +1,4 @@
-import { Context, Next } from "hono";
+import { Request, Response, NextFunction } from "express";
 
 interface RateLimitOptions {
 	windowMs: number; // Time window in milliseconds
@@ -60,62 +60,63 @@ export function rateLimit(options: RateLimitOptions) {
 		skipFailedRequests = false,
 	} = options;
 
-	return async (c: Context, next: Next) => {
+	return (req: any, res: Response, next: NextFunction) => {
 		// Get client identifier (IP address or user ID if authenticated)
-		const clientId = getClientId(c);
+		const clientId = getClientId(req);
 
 		// Get current request count
 		const { count, resetTime } = store.increment(clientId, windowMs);
 
 		// Set rate limit headers
-		c.header("X-RateLimit-Limit", maxRequests.toString());
-		c.header(
+		res.set("X-RateLimit-Limit", maxRequests.toString());
+		res.set(
 			"X-RateLimit-Remaining",
 			Math.max(0, maxRequests - count).toString()
 		);
-		c.header("X-RateLimit-Reset", new Date(resetTime).toISOString());
+		res.set("X-RateLimit-Reset", new Date(resetTime).toISOString());
 
 		// Check if limit exceeded
 		if (count > maxRequests) {
-			return c.json(
+			return res.status(429).json(
 				{
 					message,
 					retryAfter: Math.ceil((resetTime - Date.now()) / 1000),
-				},
-				429
+				}
 			);
 		}
 
-		// Continue to next middleware
-		await next();
+		// Save status of original send function to check skip options later
+		const originalSend = res.send;
+		res.send = function (body) {
+			const statusCode = res.statusCode;
+			if (skipSuccessfulRequests && statusCode < 400) {
+				const record = store.increment(clientId, windowMs);
+				record.count = Math.max(0, record.count - 2); // -1 from current req, -1 from increment here
+			}
+			if (skipFailedRequests && statusCode >= 400) {
+				const record = store.increment(clientId, windowMs);
+				record.count = Math.max(0, record.count - 2);
+			}
+			return originalSend.call(this, body);
+		};
 
-		// Handle skip options
-		const statusCode = c.res.status;
-		if (skipSuccessfulRequests && statusCode < 400) {
-			// Decrement count for successful requests if skipping
-			const record = store.increment(clientId, windowMs);
-			record.count = Math.max(0, record.count - 1);
-		}
-		if (skipFailedRequests && statusCode >= 400) {
-			// Decrement count for failed requests if skipping
-			const record = store.increment(clientId, windowMs);
-			record.count = Math.max(0, record.count - 1);
-		}
+		// Continue to next middleware
+		next();
 	};
 }
 
-function getClientId(c: Context): string {
+function getClientId(req: any): string {
 	// Try to get user ID if authenticated
-	const user = c.get("user");
+	const user = req.user;
 	if (user?.id) {
 		return `user:${user.id}`;
 	}
 
 	// Fallback to IP address
-	const forwarded = c.req.header("x-forwarded-for");
+	const forwarded = req.headers["x-forwarded-for"];
 	const ip = forwarded
-		? forwarded.split(",")[0]
-		: c.req.header("x-real-ip") || c.req.header("x-client-ip") || "unknown";
+		? (forwarded as string).split(",")[0]
+		: req.socket.remoteAddress || "unknown";
 
 	return `ip:${ip}`;
 }

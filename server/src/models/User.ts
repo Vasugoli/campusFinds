@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { genSalt, hash, compare } from "bcrypt";
+import { genSalt, hash, compare } from "bcryptjs";
 
 interface IUser extends mongoose.Document {
 	displayName: string;
@@ -45,5 +45,12 @@ userSchema.methods.comparePassword = async function (
 ): Promise<boolean> {
 	return await compare(candidatePassword, this.password);
 };
+
+// Indexes for efficient querying
+userSchema.index({ email: 1 }); // For login lookups (unique constraint already exists)
+userSchema.index({ rollNo: 1 }); // For roll number lookups
+userSchema.index({ role: 1 }); // For admin queries
+userSchema.index({ isBanned: 1, role: 1 }); // For filtering active users by role
+userSchema.index({ createdAt: -1 }); // For recent users
 
 export const User = mongoose.model<IUser>("User", userSchema);

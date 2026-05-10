@@ -1,17 +1,27 @@
-import { Hono } from "hono";
-import { cors, logger } from "hono/middleware";
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
 import { connectDB } from "./database.ts";
-// Create Hono app instance
-const app = new Hono();
+import { validateAndLoadConfig } from "./utils/envConfig.ts";
+
+// Validate and load configuration
+export const config = validateAndLoadConfig();
+
+// Create Express app instance
+const app = express();
+
 // Middleware
-app.use("*", logger());
+app.use(morgan("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(
-	"*",
 	cors({
-		origin: ["http://localhost:5173", "http://localhost:3000"], // Frontend URLs
+		origin: config.allowedOrigins,
 		credentials: true,
-	}),
+	})
 );
+
 // Connect to database
-await connectDB();
+await connectDB(config.mongodbUri);
+
 export default app;

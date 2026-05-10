@@ -1,8 +1,8 @@
-import { Hono } from "hono";
-import { auth } from "../middleware/auth.ts";
-import { createClaim, getMyClaims, getReceivedClaims, respondToClaim, getClaim } from "../controllers/claims_controllers.ts";
+import { Router } from "express";
+import { auth } from "@/middleware/auth.ts";
+import { createClaim, getMyClaims, getReceivedClaims, respondToClaim, getClaim } from "@/controllers/claims_controllers.ts";
 
-const claimRoutes = new Hono();
+const claimRoutes = Router();
 
 // Create a claim
 claimRoutes.post("/", auth, createClaim);

@@ -1,55 +1,45 @@
-import { Context, Next } from "hono";
-import { verify } from "djwt";
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import { User } from "../models/User.ts";
 
-// Helper function to create JWT key
-async function getJWTKey(): Promise<CryptoKey> {
-	const secret = Deno.env.get("JWT_SECRET") || "your-secret-key";
-	const encoder = new TextEncoder();
-	const keyData = encoder.encode(secret);
-	return await crypto.subtle.importKey(
-		"raw",
-		keyData,
-		{ name: "HMAC", hash: "SHA-256" },
-		false,
-		["sign", "verify"]
-	);
-}
-
-export const auth = async (c: Context, next: Next) => {
-	const authHeader = c.req.header("Authorization");
+export const auth = async (req: any, res: Response, next: NextFunction) => {
+	const authHeader = req.header("Authorization");
 
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return c.json({ message: "Unauthorized" }, 401);
+		return res.status(401).json({ message: "Unauthorized" });
 	}
 
 	const token = authHeader.split(" ")[1];
 
 	try {
-		const key = await getJWTKey();
-		const payload = await verify(token, key);
-		const user = await User.findById(payload.id as string).select(
-			"-password"
-		);
+		const secret = process.env.JWT_SECRET || "your-secret-key";
+		const payload = jwt.verify(token, secret) as { id: string };
+		
+		const user = await User.findById(payload.id).select("-password");
 
 		if (!user) {
-			return c.json({ message: "Unauthorized" }, 401);
+			return res.status(401).json({ message: "Unauthorized" });
 		}
 
-		c.set("user", user);
-		await next();
+		// Check if user is banned
+		if (user.isBanned) {
+			return res.status(403).json({ message: "Account suspended" });
+		}
+
+		req.user = user;
+		next();
 	} catch (error) {
 		console.error("Auth error:", error);
-		return c.json({ message: "Unauthorized" }, 401);
+		return res.status(401).json({ message: "Unauthorized" });
 	}
 };
 
-export const admin = async (c: Context, next: Next) => {
-	const user = c.get("user");
+export const admin = async (req: any, res: Response, next: NextFunction) => {
+	const user = req.user;
 
 	if (!user || user.role !== "admin") {
-		return c.json({ message: "Forbidden" }, 403);
+		return res.status(403).json({ message: "Forbidden" });
 	}
 
-	await next();
+	next();
 };

@@ -1,8 +1,8 @@
-import { Hono } from "hono";
-import { auth } from "../middleware/auth.ts";
-import { getUserNotifications, markAsRead, markAllAsRead, deleteNotification } from "../controllers/notifications_controllers.ts";
+import { Router } from "express";
+import { auth } from "@/middleware/auth.ts";
+import { getUserNotifications, markAsRead, markAllAsRead, deleteNotification } from "@/controllers/notifications_controllers.ts";
 
-const notificationRoutes = new Hono();
+const notificationRoutes = Router();
 
 // Get user notifications
 notificationRoutes.get("/", auth, getUserNotifications);

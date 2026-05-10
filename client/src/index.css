@@ -1,9 +1,108 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-body {
-    @apply bg-gray-50 min-h-screen;
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Campus color palette - Blues and Greens */
+    --background: 0 0% 100%;
+    --foreground: 215 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 20% 15%;
+
+    /* Academic blue - primary color */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 50%;
+
+    /* Fresh green - secondary/accent */
+    --secondary: 142 76% 36%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 142 76% 30%;
+
+    /* Light backgrounds */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16.3% 46.9%;
+
+    --accent: 142 76% 94%;
+    --accent-foreground: 142 76% 20%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar theming */
+    --sidebar-background: 217 91% 98%;
+    --sidebar-foreground: 215 20% 15%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 215 20% 15%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 50%;
+
+    --secondary: 142 76% 36%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 142 76% 30%;
+
+    --muted: 217 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 142 76% 20%;
+    --accent-foreground: 142 76% 94%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 32.6% 17.5%;
+    --input: 217 32.6% 17.5%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 32.6% 17.5%;
+    --sidebar-ring: 217 91% 60%;
+  }
 }
 
-html {
-    @apply bg-gray-50;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
 }

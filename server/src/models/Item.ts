@@ -35,4 +35,11 @@ itemSchema.index({
 	searchKeywords: "text",
 });
 
+// Performance indexes for common queries
+itemSchema.index({ status: 1, category: 1, createdAt: -1 }); // Filtered listing
+itemSchema.index({ reporterId: 1, createdAt: -1 }); // User's items
+itemSchema.index({ createdAt: -1 }); // Recent items
+itemSchema.index({ visibility: 1, status: 1 }); // Public item filtering
+itemSchema.index({ claimedBy: 1 }); // Claims lookup
+
 export const Item = mongoose.model("Item", itemSchema);

@@ -1,8 +1,8 @@
-import { Context } from "hono";
-import { Report } from "../models/Report.ts";
-import { Item } from "../models/Item.ts";
-import { ActivityLogger } from "../utils/activityLogger.ts";
-import { NotificationService } from "../utils/notificationService.ts";
+import { Request, Response } from "express";
+import { Report } from "@/models/Report.ts";
+import { Item } from "@/models/Item.ts";
+import { ActivityLogger } from "@/utils/activityLogger.ts";
+import { NotificationService } from "@/utils/notificationService.ts";
 
 // Validation helper
 function validateReportData(data: Record<string, unknown>) {
@@ -37,14 +37,14 @@ function validateReportData(data: Record<string, unknown>) {
 }
 
 // Create a report
-export async function createReport(c: Context) {
+export const createReport = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as any;
-		const body = await c.req.json();
+		const user = req.user;
+		const body = req.body;
 
 		const errors = validateReportData(body);
 		if (errors.length > 0) {
-			return c.json({ message: "Validation failed", errors }, 400);
+			return res.status(400).json({ message: "Validation failed", errors });
 		}
 
 		const { itemId, reason, description } = body;
@@ -55,7 +55,7 @@ export async function createReport(c: Context) {
 			"displayName"
 		);
 		if (!item) {
-			return c.json({ message: "Item not found" }, 404);
+			return res.status(404).json({ message: "Item not found" });
 		}
 
 		// Check if user has already reported this item
@@ -66,9 +66,8 @@ export async function createReport(c: Context) {
 		});
 
 		if (existingReport) {
-			return c.json(
-				{ message: "You have already reported this item" },
-				400
+			return res.status(400).json(
+				{ message: "You have already reported this item" }
 			);
 		}
 
@@ -96,11 +95,11 @@ export async function createReport(c: Context) {
 		});
 
 		// Notify item owner (if not the reporter)
-		if (item.reporterId._id.toString() !== user._id.toString()) {
+		if ((item.reporterId as any)._id.toString() !== user._id.toString()) {
 			await NotificationService.notifyItemReported(
-				item.reporterId._id.toString(),
+				(item.reporterId as any)._id.toString(),
 				item.title,
-				reason,
+				reason as any,
 				itemId,
 				report._id.toString()
 			);
@@ -113,7 +112,7 @@ export async function createReport(c: Context) {
 		});
 
 		const autoHideThreshold = parseInt(
-			Deno.env.get("AUTO_HIDE_THRESHOLD") || "5"
+			process.env.AUTO_HIDE_THRESHOLD || "5"
 		);
 		if (reportCount >= autoHideThreshold) {
 			await Item.findByIdAndUpdate(itemId, {
@@ -130,25 +129,25 @@ export async function createReport(c: Context) {
 			});
 		}
 
-		return c.json(report, 201);
+		res.status(201).json(report);
 	} catch (error) {
 		console.error("Create report error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Get reports (admin only)
-export async function getReports(c: Context) {
+export const getReports = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as any;
+		const user = req.user;
 
 		if (user.role !== "admin") {
-			return c.json({ message: "Access denied" }, 403);
+			return res.status(403).json({ message: "Access denied" });
 		}
 
-		const page = parseInt(c.req.query("page") || "1");
-		const limit = parseInt(c.req.query("limit") || "20");
-		const status = c.req.query("status");
+		const page = parseInt((req.query.page as string) || "1");
+		const limit = parseInt((req.query.limit as string) || "20");
+		const status = req.query.status as string;
 		const skip = (page - 1) * limit;
 
 		const query: Record<string, unknown> = {};
@@ -174,7 +173,7 @@ export async function getReports(c: Context) {
 			},
 		]);
 
-		return c.json({
+		res.json({
 			reports,
 			stats: stats.reduce((acc, stat) => {
 				acc[stat._id] = stat.count;
@@ -189,25 +188,25 @@ export async function getReports(c: Context) {
 		});
 	} catch (error) {
 		console.error("Get reports error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 // Review a report (admin only)
-export async function reviewReport(c: Context) {
+export const reviewReport = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as any;
+		const user = req.user;
 
 		if (user.role !== "admin") {
-			return c.json({ message: "Access denied" }, 403);
+			return res.status(403).json({ message: "Access denied" });
 		}
 
-		const reportId = c.req.param("id");
-		const body = await c.req.json();
+		const reportId = req.params.id;
+		const body = req.body;
 		const { status, action, notes } = body;
 
 		if (!status || !["reviewed", "resolved"].includes(status)) {
-			return c.json({ message: "Valid status is required" }, 400);
+			return res.status(400).json({ message: "Valid status is required" });
 		}
 
 		const report = await Report.findById(reportId)
@@ -215,11 +214,11 @@ export async function reviewReport(c: Context) {
 			.populate("reporterId", "displayName");
 
 		if (!report) {
-			return c.json({ message: "Report not found" }, 404);
+			return res.status(404).json({ message: "Report not found" });
 		}
 
 		// Update report
-		report.status = status;
+		report.status = status as any;
 		report.reviewedBy = user._id;
 		report.reviewedAt = new Date();
 		await report.save();
@@ -228,7 +227,7 @@ export async function reviewReport(c: Context) {
 		if (action) {
 			await performAdminAction(
 				action,
-				report.itemId._id.toString(),
+				(report.itemId as any)._id.toString(),
 				user._id.toString(),
 				notes
 			);
@@ -243,12 +242,12 @@ export async function reviewReport(c: Context) {
 			metadata: { status, action, notes },
 		});
 
-		return c.json(report);
+		res.json(report);
 	} catch (error) {
 		console.error("Review report error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};
 
 async function performAdminAction(
 	action: string,
@@ -285,10 +284,10 @@ async function performAdminAction(
 }
 
 // Get report details
-export async function getReport(c: Context) {
+export const getReport = async (req: any, res: Response) => {
 	try {
-		const user = c.get("user") as any;
-		const reportId = c.req.param("id");
+		const user = req.user;
+		const reportId = req.params.id;
 
 		const report = await Report.findById(reportId)
 			.populate("itemId", "title description category images")
@@ -296,20 +295,20 @@ export async function getReport(c: Context) {
 			.populate("reviewedBy", "displayName");
 
 		if (!report) {
-			return c.json({ message: "Report not found" }, 404);
+			return res.status(404).json({ message: "Report not found" });
 		}
 
 		// Only allow access to admins or the reporter
 		if (
 			user.role !== "admin" &&
-			report.reporterId._id.toString() !== user._id.toString()
+			(report.reporterId as any)._id.toString() !== user._id.toString()
 		) {
-			return c.json({ message: "Access denied" }, 403);
+			return res.status(403).json({ message: "Access denied" });
 		}
 
-		return c.json(report);
+		res.json(report);
 	} catch (error) {
 		console.error("Get report error:", error);
-		return c.json({ message: "Internal server error" }, 500);
+		res.status(500).json({ message: "Internal server error" });
 	}
-}
+};

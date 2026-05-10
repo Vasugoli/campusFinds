@@ -17,9 +17,9 @@ interface UploadResult {
 
 export class CloudinaryService {
 	private static config: CloudinaryConfig = {
-		cloud_name: Deno.env.get("CLOUDINARY_CLOUD_NAME") || "",
-		api_key: Deno.env.get("CLOUDINARY_API_KEY") || "",
-		api_secret: Deno.env.get("CLOUDINARY_API_SECRET") || "",
+		cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "",
+		api_key: process.env.CLOUDINARY_API_KEY || "",
+		api_secret: process.env.CLOUDINARY_API_SECRET || "",
 	};
 
 	static isConfigured(): boolean {
